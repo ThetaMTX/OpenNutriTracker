@@ -43,21 +43,71 @@ jobs:
           supabase_project_url: https://stub.supabase.co
           supabase_project_anon_key: personal-build
 
+      # Google's AIY food classifier (2,023 foods, Apache 2.0) for the
+      # Recognise tile. Not committed; fetched from the first source that
+      # serves it. A TFLite file has "TFL3" at byte 4. Without it the app
+      # still builds and Recognise only reads text on packs.
+      - name: Download the food model
+        run: |
+          mkdir -p assets/ml dl
+          is_tflite() { [ -s "$1" ] && [ "$(dd if="$1" bs=1 skip=4 count=4 2>/dev/null)" = "TFL3" ]; }
+          for url in \
+            "https://storage.googleapis.com/tfhub-lite-models/google/lite-model/aiy/vision/classifier/food_V1/1.tflite" \
+            "https://tfhub.dev/google/lite-model/aiy/vision/classifier/food_V1/1?lite-format=tflite" \
+            "https://www.kaggle.com/api/v1/models/google/aiy/tfLite/vision-classifier-food-v1/1/download"; do
+            rm -rf dl && mkdir -p dl
+            curl -fsSL --retry 2 -o dl/model "$url" || continue
+            if is_tflite dl/model; then
+              cp dl/model assets/ml/aiy_food_v1.tflite
+              echo "Food model from $url"
+              break
+            fi
+            if tar -xzf dl/model -C dl 2>/dev/null; then
+              found="$(find dl -name '*.tflite' | head -n 1)"
+              if [ -n "$found" ] && is_tflite "$found"; then
+                cp "$found" assets/ml/aiy_food_v1.tflite
+                echo "Food model from $url (archive)"
+                break
+              fi
+            fi
+          done
+          rm -rf dl
+          if [ -f assets/ml/aiy_food_v1.tflite ]; then
+            ls -l assets/ml/aiy_food_v1.tflite
+          else
+            echo "::warning::Could not download the food model. Recognise will only read text on packs."
+          fi
+          if curl -fsSL --retry 2 -o assets/ml/aiy_food_v1_labelmap.csv \
+            "https://www.gstatic.com/aihub/tfhub/labelmaps/aiy_food_V1_labelmap.csv"; then
+            echo "Label map lines: $(wc -l < assets/ml/aiy_food_v1_labelmap.csv)"
+          else
+            rm -f assets/ml/aiy_food_v1_labelmap.csv
+            echo "::warning::Could not download the food label map."
+          fi
+
       - name: Install Flutter packages
         run: flutter pub get
 
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Test the nutrition label parser
-        run: flutter test test/unit_test/nutrition_label_parser_test.dart
+      - name: Test the label parser and the colour palette
+        run: >-
+          flutter test
+          test/unit_test/nutrition_label_parser_test.dart
+          test/unit_test/food_recognition_text_test.dart
+          test/unit_test/app_palette_on_accent_contrast_test.dart
 
       - name: Analyze the changed code
         run: >-
           flutter analyze --no-fatal-infos
           lib/core/utils/nutrition_label_parser.dart
+          lib/core/utils/food_recognition_text.dart
+          lib/core/styles
           lib/features/edit_meal
+          lib/features/add_meal
           test/unit_test/nutrition_label_parser_test.dart
+          test/unit_test/food_recognition_text_test.dart
 
       # Signing key from two repository secrets: PERSONAL_KEYSTORE_BASE64
       # (the keystore, base64) and PERSONAL_KEYSTORE_PASSWORD, alias

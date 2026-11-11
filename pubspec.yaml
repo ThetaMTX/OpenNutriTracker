@@ -70,6 +70,8 @@ dependencies:
   mobile_scanner: ^7.4.1
   # On-device text recognition for reading nutrition labels from a photo.
   google_mlkit_text_recognition: ^1.0.2
+  # On-device food recognition (Recognise tile) with a custom TFLite model.
+  google_mlkit_image_labeling: ^1.0.2
   qr_flutter: ^4.1.0
   share_plus: ^13.3.1
   image_picker: ^1.2.4
@@ -146,6 +148,10 @@ flutter:
     # in unsplash_attribution.dart). Shipping them means Try Demo never
     # contacts Unsplash's CDN, at seed time or at render time.
     - assets/demo/meals/
+    # On-device food model (Recognise tile). The .tflite and its label map
+    # are downloaded by the personal APK workflow, not committed; see
+    # assets/ml/README.md.
+    - assets/ml/
 
   fonts:
     - family: CustomIcons

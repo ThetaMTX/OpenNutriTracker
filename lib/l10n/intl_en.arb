@@ -1591,5 +1591,46 @@
   "readNutritionLabelNothingFound": "No nutrition values found. Photograph the table flat, close up and without glare.",
   "@readNutritionLabelNothingFound": {
     "description": "Snackbar when no nutrition values could be read from the photo."
+  },
+  "addMealRecogniseLabel": "Recognise",
+  "@addMealRecogniseLabel": {
+    "description": "Tile on the add-food screen. Takes a photo and guesses the food on the phone, then lets the user pick a guess to search for."
+  },
+  "recogniseFoodSheetTitle": "What is it?",
+  "@recogniseFoodSheetTitle": {
+    "description": "Title of the sheet listing what a food photo probably shows."
+  },
+  "recogniseFoodSheetHint": "Pick one to search for it, then choose the exact food.",
+  "@recogniseFoodSheetHint": {
+    "description": "Hint under the title of the food guesses sheet."
+  },
+  "recogniseFoodPackTextLabel": "Text on the pack",
+  "@recogniseFoodPackTextLabel": {
+    "description": "Subtitle of the guess built from the brand and product name read on a pack."
+  },
+  "recogniseFoodMatchPercent": "{percent}%",
+  "@recogniseFoodMatchPercent": {
+    "description": "How sure the on-device model is about one food guess.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "recogniseFoodTypeInstead": "None of these, type it",
+  "@recogniseFoodTypeInstead": {
+    "description": "Closes the food guesses sheet so the user can type a search."
+  },
+  "recogniseFoodAskAi": "Ask AI instead",
+  "@recogniseFoodAskAi": {
+    "description": "Opens the cloud AI photo reading (Snap meal) from the food guesses sheet."
+  },
+  "recogniseFoodNothingFound": "Couldn't recognise this. Try closer, one food per photo, in good light.",
+  "@recogniseFoodNothingFound": {
+    "description": "Snackbar when the on-device recogniser found neither a food nor pack text."
+  },
+  "recogniseFoodModelMissing": "The food model isn't in this build, so only text on packs is read.",
+  "@recogniseFoodModelMissing": {
+    "description": "Note when the app was built without the on-device food model."
   }
 }

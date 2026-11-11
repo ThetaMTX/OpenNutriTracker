@@ -17,6 +17,12 @@ class AddFoodMethodTiles extends StatelessWidget {
   final VoidCallback onSnapMealPressed;
   final VoidCallback onDescribePressed;
 
+  /// Photo → on-device food guesses. Null hides the tile.
+  final VoidCallback? onRecognisePressed;
+
+  /// True while a photo is being recognised; the tile shows a spinner.
+  final bool recognising;
+
   /// Whether the describe panel below is open, so its tile reads as on.
   final bool describeOpen;
 
@@ -31,6 +37,8 @@ class AddFoodMethodTiles extends StatelessWidget {
     required this.onSnapMealPressed,
     required this.onDescribePressed,
     required this.describeOpen,
+    this.onRecognisePressed,
+    this.recognising = false,
     this.showAi = true,
   });
 
@@ -59,6 +67,24 @@ class AddFoodMethodTiles extends StatelessWidget {
           ),
         ),
         const SizedBox(width: Dimens.spacing8),
+        if (onRecognisePressed != null) ...[
+          Expanded(
+            child: Semantics(
+              identifier: 'add-meal-method-recognise',
+              container: true,
+              child: _MethodTile(
+                icon: Icons.image_search_rounded,
+                label: s.addMealRecogniseLabel,
+                background: palette.surface,
+                foreground: palette.textStrong,
+                border: palette.border,
+                busy: recognising,
+                onPressed: onRecognisePressed!,
+              ),
+            ),
+          ),
+          const SizedBox(width: Dimens.spacing8),
+        ],
         if (showAi) ...[
           Expanded(
             child: Semantics(
@@ -112,6 +138,7 @@ class _MethodTile extends StatelessWidget {
   final Color foreground;
   final Color? border;
   final bool ai;
+  final bool busy;
   final VoidCallback onPressed;
 
   const _MethodTile({
@@ -122,6 +149,7 @@ class _MethodTile extends StatelessWidget {
     required this.onPressed,
     this.border,
     this.ai = false,
+    this.busy = false,
   });
 
   @override
@@ -138,7 +166,7 @@ class _MethodTile extends StatelessWidget {
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onPressed,
+        onTap: busy ? null : onPressed,
         child: Stack(
           children: [
             Padding(
@@ -152,7 +180,19 @@ class _MethodTile extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(icon, size: 26, color: foreground),
+                  if (busy)
+                    Center(
+                      child: SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: foreground,
+                        ),
+                      ),
+                    )
+                  else
+                    Icon(icon, size: 26, color: foreground),
                   const SizedBox(height: Dimens.spacing8),
                   // Wraps rather than ellipsizes: the labels are a word or
                   // two, and a clipped "Snap m…" names nothing.

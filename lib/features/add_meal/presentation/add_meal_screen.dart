@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
 import 'package:opennutritracker/core/presentation/widgets/empty_hint.dart';
 import 'package:opennutritracker/core/presentation/widgets/error_dialog.dart';
@@ -9,6 +12,7 @@ import 'package:opennutritracker/core/utils/ai_credential_storage.dart';
 import 'package:opennutritracker/core/utils/locator.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
 import 'package:opennutritracker/core/utils/navigation_predicates.dart';
+import 'package:opennutritracker/features/add_meal/data/food_photo_recognizer.dart';
 import 'package:opennutritracker/features/add_meal/data/repository/products_repository.dart';
 import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
 import 'package:opennutritracker/features/add_meal/presentation/add_meal_type.dart';
@@ -28,6 +32,7 @@ import 'package:opennutritracker/features/add_meal/presentation/widgets/no_resul
 import 'package:opennutritracker/features/add_meal/presentation/widgets/meal_item_card.dart';
 import 'package:opennutritracker/features/add_meal/presentation/widgets/partial_results_notice.dart';
 import 'package:opennutritracker/features/add_meal/presentation/widgets/quick_add_bottom_sheet.dart';
+import 'package:opennutritracker/features/add_meal/presentation/widgets/recognise_food_sheet.dart';
 import 'package:opennutritracker/features/add_meal/presentation/bloc/products_bloc.dart';
 import 'package:opennutritracker/features/add_meal/util/meal_relevance_ranker.dart';
 import 'package:opennutritracker/features/diary/presentation/bloc/calendar_day_bloc.dart';
@@ -51,6 +56,13 @@ class AddMealScreen extends StatefulWidget {
 class _AddMealScreenState extends State<AddMealScreen> {
   final _log = Logger('AddMealScreen');
   final ValueNotifier<String> _searchStringListener = ValueNotifier('');
+
+  /// Shared with the search bar so a recognised food can be put in it.
+  final _searchTextController = TextEditingController();
+
+  /// On-device food guesses from a photo (the Recognise tile).
+  final _foodRecognizer = FoodPhotoRecognizer();
+  bool _recognising = false;
 
   late AddMealType _mealType;
   late DateTime _day;
@@ -124,6 +136,8 @@ class _AddMealScreenState extends State<AddMealScreen> {
   @override
   void dispose() {
     _searchStringListener.dispose();
+    _searchTextController.dispose();
+    _foodRecognizer.close();
     _favouriteMealBloc.close();
     _addMealBloc.close();
     _logTray.dispose();
@@ -225,10 +239,13 @@ class _AddMealScreenState extends State<AddMealScreen> {
                           onSearchSubmit: _onSearchSubmit,
                           onSearchChanged: _onSearchChanged,
                           onBarcodePressed: null,
+                          controller: _searchTextController,
                         ),
                         const SizedBox(height: Dimens.spacing12),
                         AddFoodMethodTiles(
                           onBarcodePressed: _onBarcodeIconPressed,
+                          onRecognisePressed: _onRecognisePressed,
+                          recognising: _recognising,
                           onSnapMealPressed: () =>
                               _openBulkAdd(startWithPhoto: true),
                           onDescribePressed: () =>
@@ -1049,6 +1066,72 @@ class _AddMealScreenState extends State<AddMealScreen> {
     if (discard != true || !mounted) return;
     _logTray.clear();
     Navigator.of(context).pop();
+  }
+
+  /// Recognise: a photo, guesses made on the phone, and the pick becomes a
+  /// normal search, so the user then chooses the exact food from results.
+  Future<void> _onRecognisePressed() async {
+    final strings = S.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    XFile? photo;
+    try {
+      photo = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+    } catch (e, st) {
+      _log.warning('Failed to open the camera for food recognition', e, st);
+      return;
+    }
+    if (photo == null || !mounted) return;
+
+    setState(() => _recognising = true);
+    final result = await _foodRecognizer.recognize(photo.path);
+    // The photo was only needed for this; don't leave it in the cache.
+    try {
+      await File(photo.path).delete();
+    } catch (_) {
+      // Best effort: the system clears the picker's cache on its own.
+    }
+    if (!mounted) return;
+    setState(() => _recognising = false);
+
+    if (result.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.modelMissing
+                ? strings.recogniseFoodModelMissing
+                : strings.recogniseFoodNothingFound,
+          ),
+        ),
+      );
+      return;
+    }
+
+    final choice = await showRecogniseFoodSheet(
+      context,
+      result,
+      showAi: !_aiHidden,
+    );
+    if (!mounted || choice == null) return;
+    if (choice.askAi) {
+      await _openBulkAdd(startWithPhoto: true);
+      return;
+    }
+    final query = choice.query;
+    if (query != null) _searchFor(query);
+  }
+
+  /// Puts [query] in the search field and runs it, as if typed and sent.
+  void _searchFor(String query) {
+    _searchTextController.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+    _searchStringListener.value = query;
+    _onSearchSubmit(query);
   }
 
   /// Snap meal and Describe both end on the review screen: a photo or a

@@ -13,6 +13,9 @@ class MealSearchBar extends StatefulWidget {
   // Nullable so callers that don't surface a barcode flow (e.g. the recipe
   // ingredient picker) can omit the suffix icon entirely.
   final Function()? onBarcodePressed;
+  // Optional, so a parent can put text in the field (the food recogniser
+  // fills in what it found). Without one the bar owns its own controller.
+  final TextEditingController? controller;
 
   const MealSearchBar({
     super.key,
@@ -20,6 +23,7 @@ class MealSearchBar extends StatefulWidget {
     required this.onSearchSubmit,
     required this.onBarcodePressed,
     this.onSearchChanged,
+    this.controller,
   });
 
   @override
@@ -31,11 +35,12 @@ class _MealSearchBarState extends State<MealSearchBar> {
   // switches search source on the first keystroke, which rebuilds this widget;
   // a controller created per build would be replaced and would swallow that
   // first character (the "first input ignored" bug).
-  final _searchTextController = TextEditingController();
+  late final TextEditingController _searchTextController =
+      widget.controller ?? TextEditingController();
 
   @override
   void dispose() {
-    _searchTextController.dispose();
+    if (widget.controller == null) _searchTextController.dispose();
     super.dispose();
   }
 

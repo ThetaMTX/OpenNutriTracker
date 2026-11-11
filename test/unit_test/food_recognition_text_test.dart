@@ -28,6 +28,28 @@ void main() {
     });
   });
 
+  group('parseNetWeightGrams', () {
+    double? read(List<String> texts) =>
+        parseNetWeightGrams([for (final t in texts) LabelTextLine(t)]);
+
+    test('reads "Masa netto: 410 g"', () {
+      expect(read(['Wartość odżywcza w 100 g', 'Masa netto: 410 g']), 410);
+    });
+
+    test('takes kg and litres as grams, also from the next line', () {
+      expect(read(['Net weight', '0,5 kg']), 500);
+      expect(read(['Netto 1 l']), 1000);
+    });
+
+    test('reads the EU estimated sign', () {
+      expect(read(['410 g ℮']), 410);
+    });
+
+    test('ignores the 100 g of a nutrition table and nutrient rows', () {
+      expect(read(['Wartość odżywcza w 100 g', 'Tłuszcz 12 g']), isNull);
+    });
+  });
+
   group('PackTextQuery', () {
     test('takes the largest lines and skips size and dates', () {
       const lines = [

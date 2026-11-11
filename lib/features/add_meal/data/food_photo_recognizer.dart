@@ -27,14 +27,30 @@ class FoodRecognition {
   /// True when this build has no food model, so only pack text was read.
   final bool modelMissing;
 
+  /// A nutrition table in the photo, per 100 g, when one was read.
+  final NutritionLabelValues? labelValues;
+
+  /// The pack's net weight in grams ("masa netto 410 g"), when printed.
+  final double? netWeightGrams;
+
   const FoodRecognition({
     this.dishes = const [],
     this.packText,
     this.modelMissing = false,
+    this.labelValues,
+    this.netWeightGrams,
   });
 
-  bool get isEmpty => dishes.isEmpty && packText == null;
+  bool get isEmpty =>
+      dishes.isEmpty && packText == null && labelValues == null;
 }
+
+/// What the text recogniser found on a pack.
+typedef PackText = ({
+  String? searchText,
+  NutritionLabelValues? labelValues,
+  double? netWeightGrams,
+});
 
 /// Guesses what food a photo shows, entirely on the phone.
 ///
@@ -58,13 +74,20 @@ class FoodPhotoRecognizer {
   Future<FoodRecognition> recognize(String imagePath) async {
     final image = InputImage.fromFilePath(imagePath);
     final dishes = await _guessDishes(image);
-    final packText = await _readPackText(image);
+    final text = await _readPackText(image);
     return FoodRecognition(
       dishes: dishes,
-      packText: packText,
+      packText: text.searchText,
       modelMissing: _modelMissing,
+      labelValues: text.labelValues,
+      netWeightGrams: text.netWeightGrams,
     );
   }
+
+  /// Only the text pass: for the "scan nutrition table" button, where the
+  /// photo is known to show a label.
+  Future<PackText> readPack(String imagePath) =>
+      _readPackText(InputImage.fromFilePath(imagePath), anyTable: true);
 
   Future<void> close() async {
     await _labeler?.close();
@@ -144,11 +167,18 @@ class FoodPhotoRecognizer {
     return labels;
   }
 
-  Future<String?> _readPackText(InputImage image) async {
+  /// Brand and name, a nutrition table and the net weight, from one text
+  /// pass. A table counts when it has energy and at least two other rows, so
+  /// a stray "kcal" on the front of a pack does not offer one; with
+  /// [anyTable] (the user said it is a label) any values found count.
+  Future<PackText> _readPackText(
+    InputImage image, {
+    bool anyTable = false,
+  }) async {
     final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
     try {
       final recognized = await recognizer.processImage(image);
-      return PackTextQuery.fromLines([
+      final lines = [
         for (final block in recognized.blocks)
           for (final line in block.lines)
             LabelTextLine(
@@ -158,10 +188,19 @@ class FoodPhotoRecognizer {
               right: line.boundingBox.right,
               bottom: line.boundingBox.bottom,
             ),
-      ]);
+      ];
+      final table = NutritionLabelParser.parse(lines);
+      final isTable = anyTable
+          ? !table.isEmpty
+          : table.energyKcal != null && table.foundCount >= 3;
+      return (
+        searchText: PackTextQuery.fromLines(lines),
+        labelValues: isTable ? table : null,
+        netWeightGrams: parseNetWeightGrams(lines),
+      );
     } catch (e, st) {
       _log.warning('Reading pack text failed', e, st);
-      return null;
+      return (searchText: null, labelValues: null, netWeightGrams: null);
     } finally {
       await recognizer.close();
     }

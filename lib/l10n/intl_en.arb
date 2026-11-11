@@ -1632,5 +1632,130 @@
   "recogniseFoodModelMissing": "The food model isn't in this build, so only text on packs is read.",
   "@recogniseFoodModelMissing": {
     "description": "Note when the app was built without the on-device food model."
+  },
+  "recogniseFoodUseTable": "Use the nutrition table",
+  "@recogniseFoodUseTable": {
+    "description": "First option on the guesses sheet when the photo shows a nutrition table."
+  },
+  "recogniseFoodTableKcal": "{kcal} kcal per 100 g",
+  "@recogniseFoodTableKcal": {
+    "description": "Energy read from the nutrition table, under the option to use it.",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
+  "scanLabelTooltip": "Scan nutrition table",
+  "@scanLabelTooltip": {
+    "description": "Tooltip of the add-food screen's app bar button that photographs a nutrition table."
+  },
+  "labelReviewTitle": "Check the label",
+  "@labelReviewTitle": {
+    "description": "Title of the sheet showing values read from a nutrition table."
+  },
+  "labelReviewHint": "Read from your photo and shown in English. Fix anything that's wrong.",
+  "@labelReviewHint": {
+    "description": "Hint under the label check title."
+  },
+  "labelReviewNameLabel": "Name",
+  "@labelReviewNameLabel": {
+    "description": "Label of the product name field on the label check sheet."
+  },
+  "labelReviewNameHint": "Product name",
+  "@labelReviewNameHint": {
+    "description": "Placeholder of the product name field on the label check sheet."
+  },
+  "labelReviewPer100g": "Per 100 g",
+  "@labelReviewPer100g": {
+    "description": "Heading over the nutrient rows of the label check sheet."
+  },
+  "labelReviewEnergy": "Energy",
+  "@labelReviewEnergy": {
+    "description": "Row of the label check sheet (Polish label: Wartość energetyczna)."
+  },
+  "labelReviewFat": "Fat",
+  "@labelReviewFat": {
+    "description": "Row of the label check sheet (Polish label: Tłuszcz)."
+  },
+  "labelReviewSaturates": "of which saturates",
+  "@labelReviewSaturates": {
+    "description": "Row of the label check sheet (Polish label: w tym kwasy tłuszczowe nasycone)."
+  },
+  "labelReviewCarbs": "Carbohydrates",
+  "@labelReviewCarbs": {
+    "description": "Row of the label check sheet (Polish label: Węglowodany)."
+  },
+  "labelReviewSugars": "of which sugars",
+  "@labelReviewSugars": {
+    "description": "Row of the label check sheet (Polish label: w tym cukry)."
+  },
+  "labelReviewFibre": "Fibre",
+  "@labelReviewFibre": {
+    "description": "Row of the label check sheet (Polish label: Błonnik)."
+  },
+  "labelReviewProtein": "Protein",
+  "@labelReviewProtein": {
+    "description": "Row of the label check sheet (Polish label: Białko)."
+  },
+  "labelReviewSalt": "Salt",
+  "@labelReviewSalt": {
+    "description": "Row of the label check sheet (Polish label: Sól)."
+  },
+  "labelReviewAmount": "Amount",
+  "@labelReviewAmount": {
+    "description": "Field on the label check sheet: how many grams to add."
+  },
+  "labelReviewTotal": "{grams} g = {kcal} kcal · fat {fat} g · carbs {carbs} g · protein {protein} g",
+  "@labelReviewTotal": {
+    "description": "What the chosen amount comes to, on the label check sheet.",
+    "placeholders": {
+      "grams": {
+        "type": "String"
+      },
+      "kcal": {
+        "type": "int"
+      },
+      "fat": {
+        "type": "String"
+      },
+      "carbs": {
+        "type": "String"
+      },
+      "protein": {
+        "type": "String"
+      }
+    }
+  },
+  "labelReviewSaveForLater": "Save as my food for next time",
+  "@labelReviewSaveForLater": {
+    "description": "Checkbox on the label check sheet."
+  },
+  "labelReviewAddButton": "Add to list",
+  "@labelReviewAddButton": {
+    "description": "Confirms the label check sheet and adds the food to the To log list."
+  },
+  "labelReviewNeedsValues": "Energy, fat, carbs, protein and an amount are needed.",
+  "@labelReviewNeedsValues": {
+    "description": "Shown under the disabled add button of the label check sheet."
+  },
+  "labelDefaultName": "Scanned food",
+  "@labelDefaultName": {
+    "description": "Name given to a food added from a nutrition table when the user typed none."
+  },
+  "labelAddedToList": "Added {grams} g of {name} ({kcal} kcal) to the list",
+  "@labelAddedToList": {
+    "description": "Snackbar after a scanned food was added to the To log list.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "grams": {
+        "type": "String"
+      },
+      "kcal": {
+        "type": "int"
+      }
+    }
   }
 }

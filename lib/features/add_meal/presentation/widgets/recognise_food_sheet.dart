@@ -11,9 +11,24 @@ class RecognitionChoice {
   /// The user wants the cloud "Snap meal" reading instead.
   final bool askAi;
 
-  const RecognitionChoice.search(String this.query) : askAi = false;
-  const RecognitionChoice.typeInstead() : query = null, askAi = false;
-  const RecognitionChoice.askAi() : query = null, askAi = true;
+  /// The user wants the nutrition table found in the photo.
+  final bool useLabel;
+
+  const RecognitionChoice.search(String this.query)
+    : askAi = false,
+      useLabel = false;
+  const RecognitionChoice.typeInstead()
+    : query = null,
+      askAi = false,
+      useLabel = false;
+  const RecognitionChoice.askAi()
+    : query = null,
+      askAi = true,
+      useLabel = false;
+  const RecognitionChoice.useLabel()
+    : query = null,
+      askAi = false,
+      useLabel = true;
 }
 
 /// Lists what the photo probably shows; picking one searches for it, so the
@@ -31,6 +46,7 @@ Future<RecognitionChoice?> showRecogniseFoodSheet(
       final s = S.of(sheetContext);
       final theme = Theme.of(sheetContext);
       final packText = result.packText;
+      final labelKcal = result.labelValues?.energyKcal;
       return SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
@@ -52,6 +68,21 @@ Future<RecognitionChoice?> showRecogniseFoodSheet(
               const SizedBox(height: Dimens.spacing4),
               Text(s.recogniseFoodSheetHint, style: theme.textTheme.bodySmall),
               const SizedBox(height: Dimens.spacing8),
+              if (result.labelValues != null)
+                Semantics(
+                  identifier: 'recognise-use-label',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.document_scanner_outlined),
+                    title: Text(s.recogniseFoodUseTable),
+                    subtitle: labelKcal == null
+                        ? null
+                        : Text(s.recogniseFoodTableKcal(labelKcal.round())),
+                    onTap: () => Navigator.of(
+                      sheetContext,
+                    ).pop(const RecognitionChoice.useLabel()),
+                  ),
+                ),
               if (packText != null)
                 Semantics(
                   identifier: 'recognise-pack-text',

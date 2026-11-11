@@ -10,9 +10,13 @@ import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/core/data/data_source/remote_search_cache_data_source.dart';
 import 'package:opennutritracker/core/utils/ai_credential_storage.dart';
 import 'package:opennutritracker/core/utils/locator.dart';
+import 'package:opennutritracker/core/utils/nutrition_label_parser.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
 import 'package:opennutritracker/core/utils/navigation_predicates.dart';
+import 'package:opennutritracker/core/utils/id_generator.dart';
 import 'package:opennutritracker/features/add_meal/data/food_photo_recognizer.dart';
+import 'package:opennutritracker/features/add_meal/domain/entity/meal_nutriments_entity.dart';
+import 'package:opennutritracker/features/add_meal/util/portion_unit.dart';
 import 'package:opennutritracker/features/add_meal/data/repository/products_repository.dart';
 import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
 import 'package:opennutritracker/features/add_meal/presentation/add_meal_type.dart';
@@ -32,7 +36,9 @@ import 'package:opennutritracker/features/add_meal/presentation/widgets/no_resul
 import 'package:opennutritracker/features/add_meal/presentation/widgets/meal_item_card.dart';
 import 'package:opennutritracker/features/add_meal/presentation/widgets/partial_results_notice.dart';
 import 'package:opennutritracker/features/add_meal/presentation/widgets/quick_add_bottom_sheet.dart';
+import 'package:opennutritracker/features/add_meal/presentation/widgets/nutrition_label_review_sheet.dart';
 import 'package:opennutritracker/features/add_meal/presentation/widgets/recognise_food_sheet.dart';
+import 'package:opennutritracker/features/edit_meal/presentation/bloc/edit_meal_bloc.dart';
 import 'package:opennutritracker/features/add_meal/presentation/bloc/products_bloc.dart';
 import 'package:opennutritracker/features/add_meal/util/meal_relevance_ranker.dart';
 import 'package:opennutritracker/features/diary/presentation/bloc/calendar_day_bloc.dart';
@@ -184,6 +190,14 @@ class _AddMealScreenState extends State<AddMealScreen> {
             child: TextButton(
               onPressed: _onQuickAddPressed,
               child: Text(S.of(context).quickAddCardLabel),
+            ),
+          ),
+          Semantics(
+            identifier: 'add-meal-scan-label',
+            child: IconButton(
+              tooltip: S.of(context).scanLabelTooltip,
+              onPressed: _recognising ? null : _onScanLabelPressed,
+              icon: const Icon(Icons.document_scanner_outlined),
             ),
           ),
           BlocBuilder<AddMealBloc, AddMealState>(
@@ -1073,29 +1087,8 @@ class _AddMealScreenState extends State<AddMealScreen> {
   Future<void> _onRecognisePressed() async {
     final strings = S.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    XFile? photo;
-    try {
-      photo = await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1600,
-        maxHeight: 1600,
-      );
-    } catch (e, st) {
-      _log.warning('Failed to open the camera for food recognition', e, st);
-      return;
-    }
-    if (photo == null || !mounted) return;
-
-    setState(() => _recognising = true);
-    final result = await _foodRecognizer.recognize(photo.path);
-    // The photo was only needed for this; don't leave it in the cache.
-    try {
-      await File(photo.path).delete();
-    } catch (_) {
-      // Best effort: the system clears the picker's cache on its own.
-    }
-    if (!mounted) return;
-    setState(() => _recognising = false);
+    final result = await _withPhoto(_foodRecognizer.recognize);
+    if (result == null || !mounted) return;
 
     if (result.isEmpty) {
       messenger.showSnackBar(
@@ -1120,8 +1113,147 @@ class _AddMealScreenState extends State<AddMealScreen> {
       await _openBulkAdd(startWithPhoto: true);
       return;
     }
+    final label = result.labelValues;
+    if (choice.useLabel && label != null) {
+      await _reviewAndAddLabel(
+        label,
+        netWeightGrams: result.netWeightGrams,
+        name: result.packText,
+      );
+      return;
+    }
     final query = choice.query;
     if (query != null) _searchFor(query);
+  }
+
+  /// Takes a photo, runs [read] on it with the Recognise tile spinning, and
+  /// deletes the photo. Null when no photo was taken or the screen is gone.
+  Future<T?> _withPhoto<T>(Future<T> Function(String path) read) async {
+    XFile? photo;
+    try {
+      photo = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+    } catch (e, st) {
+      _log.warning('Failed to open the camera', e, st);
+      return null;
+    }
+    if (photo == null || !mounted) return null;
+
+    setState(() => _recognising = true);
+    final T result;
+    try {
+      result = await read(photo.path);
+    } finally {
+      if (mounted) setState(() => _recognising = false);
+      // The photo was only needed for this; don't leave it in the cache.
+      try {
+        await File(photo.path).delete();
+      } catch (_) {
+        // Best effort: the system clears the picker's cache on its own.
+      }
+    }
+    return mounted ? result : null;
+  }
+
+  /// The scan icon in the app bar: a photo of a nutrition table, straight
+  /// to the check sheet.
+  Future<void> _onScanLabelPressed() async {
+    final strings = S.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final pack = await _withPhoto(_foodRecognizer.readPack);
+    if (pack == null || !mounted) return;
+    final values = pack.labelValues;
+    if (values == null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(strings.readNutritionLabelNothingFound)),
+      );
+      return;
+    }
+    await _reviewAndAddLabel(
+      values,
+      netWeightGrams: pack.netWeightGrams,
+      name: pack.searchText,
+    );
+  }
+
+  /// Shows the values in English for the user to check, then adds the
+  /// amount they chose to the "To log" list as a custom food, saved for
+  /// next time unless they untick it.
+  Future<void> _reviewAndAddLabel(
+    NutritionLabelValues values, {
+    double? netWeightGrams,
+    String? name,
+  }) async {
+    final strings = S.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final review = await showNutritionLabelReview(
+      context,
+      values: values,
+      netWeightGrams: netWeightGrams,
+      name: name,
+    );
+    if (review == null || !mounted) return;
+
+    final v = review.values;
+    final gramsText = review.grams == review.grams.roundToDouble()
+        ? review.grams.toInt().toString()
+        : review.grams.toString();
+    final meal = MealEntity(
+      code: IdGenerator.getUniqueID(),
+      name: review.name.isNotEmpty ? review.name : strings.labelDefaultName,
+      url: null,
+      mealQuantity: gramsText,
+      mealUnit: 'g',
+      servingQuantity: null,
+      servingUnit: 'g',
+      servingSize: '',
+      nutriments: MealNutrimentsEntity(
+        energyKcal100: v.energyKcal,
+        carbohydrates100: v.carbs,
+        fat100: v.fat,
+        proteins100: v.protein,
+        sugars100: v.sugars,
+        saturatedFat100: v.saturatedFat,
+        fiber100: v.fiber,
+        sodium100: v.sodiumMg,
+      ),
+      source: MealSourceEntity.custom,
+    );
+
+    if (review.saveForLater) {
+      final editMealBloc = locator<EditMealBloc>();
+      try {
+        await editMealBloc.saveCustomMeal(meal);
+      } catch (e, st) {
+        _log.warning('Failed to save the scanned food', e, st);
+      } finally {
+        await editMealBloc.close();
+      }
+      if (!mounted) return;
+    }
+
+    final unit = UnitDropdownItem.g.toString();
+    final item = LogTrayItem(
+      meal: meal,
+      unit: storedUnit(unit),
+      amount: review.grams,
+      amountLabel: logTrayAmountLabel(context, review.grams, unit, meal),
+    );
+    _logTray.add(item);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          strings.labelAddedToList(
+            meal.name ?? '',
+            gramsText,
+            item.kcal.round(),
+          ),
+        ),
+      ),
+    );
   }
 
   /// Puts [query] in the search field and runs it, as if typed and sent.

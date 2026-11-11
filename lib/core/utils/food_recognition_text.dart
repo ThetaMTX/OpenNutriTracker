@@ -27,6 +27,42 @@ Map<int, String> parseFoodLabelMap(String csv) {
   return labels;
 }
 
+// Matched against NutritionLabelParser.fold. "℮" is the EU estimated-sign
+// printed next to a pack's net quantity.
+final RegExp _netWeightKey = RegExp(
+  r'netto|net\s*(?:weight|wt|wght|content|quantity)|nettogewicht|'
+  r'nettofullmenge|poids net|℮',
+);
+final RegExp _quantity = RegExp(r'(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b');
+
+/// The pack's net weight in grams (or millilitres) — "Masa netto: 410 g",
+/// "Net weight 0,5 kg", "410 g ℮" — or null when no line names one. Only
+/// lines with a net-weight word count, so the "100 g" of a nutrition table
+/// is never taken for it. The amount may also be on the line after the word.
+double? parseNetWeightGrams(List<LabelTextLine> lines) {
+  for (var i = 0; i < lines.length; i++) {
+    final folded = NutritionLabelParser.fold(lines[i].text);
+    if (!_netWeightKey.hasMatch(folded)) continue;
+    final grams =
+        _quantityInGrams(folded) ??
+        (i + 1 < lines.length
+            ? _quantityInGrams(NutritionLabelParser.fold(lines[i + 1].text))
+            : null);
+    if (grams != null) return grams;
+  }
+  return null;
+}
+
+double? _quantityInGrams(String folded) {
+  final match = _quantity.firstMatch(folded);
+  if (match == null) return null;
+  final number = double.parse(match.group(1)!.replaceAll(',', '.'));
+  final unit = match.group(2)!;
+  final grams = (unit == 'kg' || unit == 'l') ? number * 1000 : number;
+  if (grams <= 0 || grams > 10000) return null;
+  return grams;
+}
+
 /// Turns the text read from the front of a pack into a product search.
 ///
 /// The brand and the product name are the largest text on a pack, so the

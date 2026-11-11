@@ -54,7 +54,7 @@ class UserDataMaskEntity {
   /// Settings semantics: [useMaterialYou] true + null [accentColor] is the
   /// platform default (wallpaper palette on Android 12+, static elsewhere);
   /// picking a preset stores its ARGB value and turns Material You off.
-  bool useMaterialYou = true;
+  bool useMaterialYou = false;
   int? accentColor;
 
   UserDataMaskEntity({

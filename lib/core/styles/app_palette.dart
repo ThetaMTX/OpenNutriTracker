@@ -45,39 +45,43 @@ class AppPalette {
   Color get fat => fatColor;
   Color get protein => proteinColor;
 
+  // "Midnight blue" look of the personal fork: cool blue-grey neutrals and a
+  // blue default accent in place of upstream's warm canvas and leaf green.
+  // Every text/background pair below still clears WCAG AA (4.5:1).
   static const light = AppPalette(
     brightness: Brightness.light,
-    canvas: Color(0xFFF7F4EF),
+    canvas: Color(0xFFF2F5FA),
     surface: Color(0xFFFFFFFF),
-    surfaceMuted: Color(0xFFEFEAE1),
-    border: Color(0xFFE7E1D6),
-    shadow: Color(0x14403A2E),
-    // Deepened from #1FA971 so white-on-accent and accent-as-text both clear
-    // WCAG AA (~4.6:1) on the light surface — buttons, nav labels and the ring.
-    accent: Color(0xFF0E7A4D),
+    surfaceMuted: Color(0xFFE5EBF3),
+    border: Color(0xFFD9E1EC),
+    shadow: Color(0x14101828),
+    // White on it ~5.8:1; as text on the canvas ~5.3:1.
+    accent: Color(0xFF1F5FD1),
     onAccent: Color(0xFFFFFFFF),
     carbsColor: Color(0xFFB87410),
     fatColor: Color(0xFFD05536),
     proteinColor: Color(0xFF1F8E80),
-    textStrong: Color(0xFF2B2A27),
-    // Darkened from #8A857C (~3.5:1) to ~4.6:1 so secondary text passes AA.
-    textMuted: Color(0xFF6E685E),
+    textStrong: Color(0xFF111827),
+    // ~5.2:1 even on surfaceMuted.
+    textMuted: Color(0xFF566175),
   );
 
   static const dark = AppPalette(
     brightness: Brightness.dark,
-    canvas: Color(0xFF1B1A18),
-    surface: Color(0xFF252320),
-    surfaceMuted: Color(0xFF302D28),
-    border: Color(0xFF38352F),
-    shadow: Color(0x33000000),
-    accent: Color(0xFF34D08A),
-    onAccent: Color(0xFF06281A),
+    canvas: Color(0xFF0A0E16),
+    surface: Color(0xFF121926),
+    surfaceMuted: Color(0xFF1A2333),
+    border: Color(0xFF243047),
+    shadow: Color(0x66000000),
+    // Electric blue; the deep navy on it reads at ~6.5:1.
+    accent: Color(0xFF4C9EFF),
+    onAccent: Color(0xFF04172E),
     carbsColor: Color(0xFFF2B45A),
     fatColor: Color(0xFFFF937B),
     proteinColor: Color(0xFF49C9B8),
-    textStrong: Color(0xFFECE8E1),
-    textMuted: Color(0xFFA39E94),
+    textStrong: Color(0xFFE6EDF7),
+    // ~6.2:1 on the surface.
+    textMuted: Color(0xFF8E9BB0),
   );
 
   /// Returns a copy with the accent swapped for [newAccent] (accent picker or a

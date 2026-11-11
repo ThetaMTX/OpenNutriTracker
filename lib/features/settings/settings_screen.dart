@@ -1611,7 +1611,7 @@ class _AccentTrailingSwatch extends StatelessWidget {
     }
     final color = accentColor != null
         ? Color(accentColor!)
-        : const Color(0xFF43A047); // default green disc preview
+        : Theme.of(context).colorScheme.primary; // the palette's default accent
     return Container(
       width: 24,
       height: 24,

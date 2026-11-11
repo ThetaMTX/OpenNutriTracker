@@ -13,7 +13,7 @@ class ThemeModeProvider extends ChangeNotifier {
 
   ThemeModeProvider({
     required this.appTheme,
-    this.useMaterialYou = true,
+    this.useMaterialYou = false,
     this.accentColor,
   });
 

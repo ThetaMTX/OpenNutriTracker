@@ -91,7 +91,7 @@ void main() {
 
     test('hand-tuned default palettes keep their onAccent', () {
       expect(AppPalette.light.onAccent, const Color(0xFFFFFFFF));
-      expect(AppPalette.dark.onAccent, const Color(0xFF06281A));
+      expect(AppPalette.dark.onAccent, const Color(0xFF04172E));
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:opennutritracker/core/styles/app_palette.dart';
 import 'package:opennutritracker/core/utils/reload_diary_and_trends.dart';
 import 'package:opennutritracker/features/home/presentation/bloc/home_bloc.dart';
 import 'package:opennutritracker/features/settings/presentation/bloc/settings_bloc.dart';
@@ -66,6 +67,11 @@ class MacroSplitDialog extends StatefulWidget {
 }
 
 class _MacroSplitDialogState extends State<MacroSplitDialog> {
+  /// The fixed macro colours, so the sliders match the dashboard.
+  AppPalette get _palette => Theme.of(context).brightness == Brightness.dark
+      ? AppPalette.dark
+      : AppPalette.light;
+
   static const double _defaultCarbsPct = 60;
   static const double _defaultProteinPct = 15;
   static const double _defaultFatPct = 25;
@@ -352,7 +358,7 @@ class _MacroSplitDialogState extends State<MacroSplitDialog> {
                   _MacroRow(
                     label: s.carbsLabel,
                     value: _carbsPct,
-                    color: Colors.orange,
+                    color: _palette.carbs,
                     controller: _carbsController,
                     focusNode: _focusNodes[_MacroField.carbs]!,
                     semanticIdentifier: 'macro-split-carbs',
@@ -374,7 +380,7 @@ class _MacroSplitDialogState extends State<MacroSplitDialog> {
                   _MacroRow(
                     label: s.proteinLabel,
                     value: _proteinPct,
-                    color: Colors.blue,
+                    color: _palette.protein,
                     controller: _proteinController,
                     focusNode: _focusNodes[_MacroField.protein]!,
                     semanticIdentifier: 'macro-split-protein',
@@ -396,7 +402,7 @@ class _MacroSplitDialogState extends State<MacroSplitDialog> {
                   _MacroRow(
                     label: s.fatLabel,
                     value: _fatPct,
-                    color: Colors.green,
+                    color: _palette.fat,
                     controller: _fatController,
                     focusNode: _focusNodes[_MacroField.fat]!,
                     semanticIdentifier: 'macro-split-fat',

@@ -25,7 +25,9 @@ import 'package:opennutritracker/core/utils/food_name_validator.dart';
 import 'package:opennutritracker/core/utils/locator.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
 import 'package:opennutritracker/core/utils/navigation_predicates.dart';
+import 'package:opennutritracker/core/utils/nutrition_label_parser.dart';
 import 'package:opennutritracker/features/add_meal/presentation/log_tray.dart';
+import 'package:opennutritracker/features/edit_meal/data/nutrition_label_reader.dart';
 import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
 import 'package:opennutritracker/features/edit_meal/presentation/bloc/edit_meal_bloc.dart';
 import 'package:opennutritracker/features/edit_meal/presentation/widgets/default_meal_image.dart';
@@ -111,6 +113,9 @@ class _EditMealScreenState extends State<EditMealScreen> {
   // rebuilt at save time.
   String? _localImagePath;
   bool _localImageCleared = false;
+
+  /// True while a nutrition label photo is being read.
+  bool _readingLabel = false;
 
   @override
   void initState() {
@@ -452,6 +457,25 @@ class _EditMealScreenState extends State<EditMealScreen> {
             keyboardType: TextInputType.number,
           ),
         ),
+        // Read the nutrition table from a photo, on the device. Fills the
+        // per 100 g fields of the Advanced view.
+        if (_mealEntity.source == MealSourceEntity.custom) ...[
+          const SizedBox(height: 16),
+          Semantics(
+            identifier: 'edit-meal-read-label',
+            child: OutlinedButton.icon(
+              onPressed: _readingLabel ? null : _onReadNutritionLabel,
+              icon: _readingLabel
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.document_scanner_outlined),
+              label: Text(S.of(context).readNutritionLabelButton),
+            ),
+          ),
+        ],
         // Advanced mode: quantity, unit, base-qty, and per/total toggle.
         // Simple mode omits these — the user types totals for one serving
         // and the scaffolding is hidden to reduce cognitive load (#232).
@@ -1020,6 +1044,89 @@ class _EditMealScreenState extends State<EditMealScreen> {
       // can simply tap the picker again.
       log.warning('Failed to pick meal image', e, st);
     }
+  }
+
+  /// Takes a photo of the nutrition table, reads it on the device and
+  /// fills the form with the per 100 g values it finds.
+  Future<void> _onReadNutritionLabel() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = S.of(context);
+    final usesKj =
+        Provider.of<EnergyUnitProvider>(context, listen: false).usesKilojoules;
+
+    XFile? photo;
+    try {
+      photo = await ImagePicker().pickImage(source: ImageSource.camera);
+    } catch (e, st) {
+      log.warning('Failed to open the camera for a nutrition label', e, st);
+      return;
+    }
+    if (photo == null || !mounted) return;
+
+    setState(() => _readingLabel = true);
+    NutritionLabelValues? values;
+    try {
+      values = await NutritionLabelReader().readFromImage(photo.path);
+    } catch (e, st) {
+      log.warning('Failed to read the nutrition label', e, st);
+    }
+    if (!mounted) return;
+    setState(() => _readingLabel = false);
+
+    if (values == null || values.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(strings.readNutritionLabelNothingFound)),
+      );
+      return;
+    }
+    final read = values;
+    setState(() => _applyLabelValues(read, usesKj));
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        content: Text(
+          read.energyMatchesMacros
+              ? strings.readNutritionLabelFilled(read.foundCount)
+              : strings.readNutritionLabelCheckEnergy,
+        ),
+      ),
+    );
+  }
+
+  /// Label values are per 100 g, so the form switches to the Advanced view
+  /// with a 100 g base. Only fields the label had are overwritten.
+  void _applyLabelValues(NutritionLabelValues values, bool usesKj) {
+    _formMode = CustomMealFormMode.advanced;
+    _isTotal = false;
+    selectedUnit = _units[0];
+    _baseQuantityTextController.text = _usesImperialUnits
+        ? UnitCalc.gToOz(100).toStringAsFixed(2)
+        : '100';
+
+    void fill(TextEditingController controller, double? value) {
+      if (value == null) return;
+      controller.text = _formatLabelNumber(value);
+    }
+
+    final kcal = values.energyKcal;
+    if (kcal != null) {
+      fill(_kcalTextController, usesKj ? UnitCalc.kcalToKj(kcal) : kcal);
+    }
+    fill(_fatTextController, values.fat);
+    fill(_saturatedFatTextController, values.saturatedFat);
+    fill(_carbsTextController, values.carbs);
+    fill(_sugarsTextController, values.sugars);
+    fill(_fiberTextController, values.fiber);
+    fill(_proteinTextController, values.protein);
+    fill(_sodiumTextController, values.sodiumMg);
+  }
+
+  /// "12" rather than "12.0", at most two decimals.
+  String _formatLabelNumber(double value) {
+    final rounded = value.roundToPrecision(2);
+    return rounded == rounded.roundToDouble()
+        ? rounded.toInt().toString()
+        : rounded.toString();
   }
 
   Future<void> _onRemoveMealImage() async {

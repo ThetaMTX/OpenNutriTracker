@@ -1570,5 +1570,26 @@
   "removeIngredientLabel": "Remove ingredient",
   "@removeIngredientLabel": {
     "description": "Tooltip and screen reader label of the delete button on a recipe ingredient row."
+  },
+  "readNutritionLabelButton": "Read nutrition label",
+  "@readNutritionLabelButton": {
+    "description": "Button on the custom meal form. Opens the camera; the nutrition table in the photo is read on the device and fills the per 100 g fields."
+  },
+  "readNutritionLabelFilled": "Filled {count} values per 100 g from the label. Check them before saving.",
+  "@readNutritionLabelFilled": {
+    "description": "Snackbar after a nutrition label photo was read.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "readNutritionLabelCheckEnergy": "Filled from the label, but the energy doesn't match fat, carbs and protein. A number may be misread.",
+  "@readNutritionLabelCheckEnergy": {
+    "description": "Snackbar after a nutrition label photo was read and the energy disagrees with the macros."
+  },
+  "readNutritionLabelNothingFound": "No nutrition values found. Photograph the table flat, close up and without glare.",
+  "@readNutritionLabelNothingFound": {
+    "description": "Snackbar when no nutrition values could be read from the photo."
   }
 }
